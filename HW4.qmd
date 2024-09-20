@@ -1,0 +1,220 @@
+---
+title: "HW4"
+author: "Mark Heinen"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## Task 1: Conceptual Questions
+
+1.  If your working directory is myfolder/homework/, what relative path would you specify to get the file located at myfolder/MyData.csv?
+
+> "../MyData.csv" this is due to "../" moving the reference up one level from your current directory so the reference would move from /homework/ to myfolder/ which houses MyData.csv
+
+2.  What are the major benefits of using R projects?
+
+> R projects keeps all of your files and R scripts in one directory, that way when you want to get back to where you left off you simply need to open the project to load all of the files associated with the project. If you simply saved the analysis you ran you would only be left with your environment, which would be confusing and would require you to rewrite your code from memory.
+
+3.  What is git and what is github?
+
+> It is the difference between a software and a service with git being the software and github the service. Specifically, git is a version control software, that helps users by keeping track of all the files in a folder. While github creates a repository that that can be remotely tracked by git, and allow the user to decide when to upload/add (commit) changes to files and new files to the repo. Additionally, other users can modify the repo by pulling the files in the repo to their own computer then pushing the changes they made to the repo. In summary git is the software that allows you to interact with the online repository that github provides.
+
+4.  What are the two main differences between a tibble and a data.frame?
+
+> A tibble is a type of data frame that has an extra class added to it in the form of tbl_df which goes along with the class data.frame that a normal data frame in R has. This leads to two main differences the first being printing; when printing a tibble only the first ten rows and all columns. The second difference is that subsetting is stricter with tibbles as \[ will only return another tibble, in a data frame \[ can return data frames and vectors.
+
+5.Rewrite the following nested function call using Base R’s chaining operator:
+
+> arrange(filter(select(as_tibble(iris), starts_with("Petal"), Species), Petal.Length \< 1.55), Species)
+
+```{r}
+library(tidyverse) #loading in tidyverse package
+
+arrange(filter(select(as_tibble(iris), starts_with("Petal"), Species), Petal.Length < 
+1.55), Species) #checking how original code outputs
+
+```
+
+> Rewriting the nested function call using Base R's pipe
+
+```{r}
+iris <- data.frame(iris)
+
+iris |>
+  as_tibble() |>
+  select(starts_with("Petal"), Species) |>
+  filter(Petal.Length < 1.55) |>
+  arrange(Species)
+
+
+  
+```
+
+## Task 2 Reading Delimited Data
+
+### Glass Data
+
+Reading in glass.data directly into R using the read_csv() function
+
+```{r}
+glass <- read_csv("https://www4.stat.ncsu.edu/online/datasets/glass.data", col_names = FALSE)
+```
+
+Giving glass column names and using the mutate() function to make Type_of_Glass into a character observation
+
+```{r}
+glass <- glass |> #renaming unnamed columns to variables provided in HW
+  rename(
+    "Id" = 1,
+    "RI" = 2,
+    "Na" = 3,
+    "Mg" = 4,
+    "Al" = 5,
+    "Si" = 6,
+    "K" = 7,
+    "Ca" = 8,
+    "Ba" = 9,
+    "Fe" = 10,
+    "Type_of_Glass" = 11
+    ) |> # turning numeric values in Type_of_Glass into character values
+  mutate(
+    Type_of_Glass = 
+    ifelse(Type_of_Glass == 1, "building_windows_float_processed",
+    ifelse(Type_of_Glass == 2, "building_windows_non_float_processed",
+    ifelse(Type_of_Glass == 3, "vehicle_windows_float_processed",
+    ifelse(Type_of_Glass == 5, "containers",
+    ifelse(Type_of_Glass == 6, "tableware",
+    ifelse(Type_of_Glass == 7, "headlamps", "Error"))))))
+  ) |> # filtering out observations where Fe > 0.2 and Type_of_Glass is not tableware or headlamps
+  filter(Fe < 0.2, Type_of_Glass %in% c("tableware", "headlamps")) 
+
+print(glass, n = 214)
+     
+```
+
+### Yeast Data
+
+Reading in yeast.data using the read_table() function
+
+```{r}
+yeast <- read_table("https://www4.stat.ncsu.edu/~online/datasets/yeast.data", col_names = FALSE)
+yeast
+```
+
+Giving yeast column names
+
+```{r}
+yeast <- yeast |>
+  #renaming unnamed columns to variables provided in HW
+  rename(
+    "seq_name" = 1,
+    "mcg" = 2,
+    "gvh" = 3,
+    "alm" = 4,
+    "mit" = 5,
+    "erl" = 6,
+    "pox" = 7,
+    "vac" = 8,
+    "nuc" = 9,
+    "class" = 10,
+    ) |> #selecting classes then grouping by class to get mean and median by class
+  arrange(class) |>
+  select(mcg, gvh, alm, mit, erl, pox, vac, class) |>
+  group_by(class) |>
+  summarize(
+    across(mcg:vac, list(mean = mean, median = median))
+  )
+yeast
+
+```
+
+## Task 2: Combining Excel and Delimited Data
+
+Reading in white wine data set 
+
+```{r}
+library(readxl) #Loading in readxl package
+
+white <- read_excel("white-wine.xlsx")
+white
+```
+
+Correcting backticks in variable names 
+
+```{r}
+library(janitor) #package that assist with making fixing names easier. I know this is "wrong" I just already did it before I read on for HW4
+
+
+white <- white |> 
+  janitor::clean_names() |>
+  rename(pH = p_h) #correcting clean_names() |>
+  
+ 
+white
+```
+
+had to do the mutate() seperately as it was not running correctly for some reason
+
+```{r}
+white <- white |>
+  mutate(wine_type = "white_wine")
+white
+```
+
+Reading in red wine data set using 
+
+```{r}
+library(readr)
+
+red <- read_csv2("red-wine.csv")
+red
+```
+
+Fixing column names
+
+```{r}
+red <- red |> 
+  janitor::clean_names() |>
+  rename(pH = p_h) #correcting clean_names()
+  
+red
+```
+
+Creating new varible called wine_type
+
+```{r}
+red <- red |> #turning all columns into numeric
+    mutate_all(as.numeric) |>
+    mutate(
+      wine_type = "red_wine"
+    )
+red
+
+```
+
+Combining both data sets
+
+```{r}
+red_white <- bind_rows(list(white, red), .id = "id")
+red_white
+
+```
+
+Creating new chain to modify red_white to find high quality wines with a quality over 6.5 and alcohol less than 132
+
+```{r}
+red_white <- red_white |>
+  filter(quality > 6.5 & alcohol < 132) |>
+  arrange(desc(quality)) |>
+  select(citric_acid, alcohol, wine_type, quality) |>
+  group_by(quality) |>
+  mutate(
+    across(alcohol, list(mean = mean, standard_deviation = sd))
+  )
+red_white
+```
+
+
+
